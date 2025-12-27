@@ -1,5 +1,4 @@
 using System;
-using System.Threading;
 
 namespace TinyDungeon
 {
@@ -7,141 +6,198 @@ namespace TinyDungeon
     {
         Player player = new Player();
         Random rng = new Random();
-
-        int score = 0;
         int healCooldown = 5;
         int healTimer = 0;
-
-        Enemy[] enemies =
-        {
-            new Enemy("Goblin", 4, 1, 6, 0.6),
-            new Enemy("Orc", 6, 2, 6, 0.4),
-            new Enemy("Skeleton", 5, 1, 8, 0.5)
-        };
+        int score = 0;
 
         public void Run()
         {
             CreateCharacter();
 
-            bool running = true;
-            while (running)
-            {
-                Console.Clear();
-                Enemy current = enemies[rng.Next(enemies.Length)];
+            // Phase 1
+            StoryPhase1();
+            BattlePhase(GetRandomEnemy(1));
 
-                DrawUI(current);
+            // Phase 2
+            StoryPhase2();
+            BattlePhase(GetRandomEnemy(2));
 
-                Console.WriteLine("Choose your action:");
-                Console.WriteLine("[A] Attack   [H] Heal   [Q] Quit");
-
-                ConsoleKey key = Console.ReadKey(true).Key;
-
-                if (key == ConsoleKey.Q)
-                    break;
-
-                if (key == ConsoleKey.H && healTimer == 0)
-                {
-                    int heal = 20;
-                    player.Health = Math.Min(player.Health + heal, player.MaxHealth);
-                    healTimer = healCooldown;
-                    Console.WriteLine($"You regain {heal} HP.");
-                }
-
-                if (key == ConsoleKey.A)
-                {
-                    PlayerAttack(current);
-                }
-
-                EnemyTurn(current);
-
-                if (healTimer > 0)
-                    healTimer--;
-
-                score++;
-                player.GainXP(1);
-
-                if (player.Health <= 0)
-                {
-                    Console.WriteLine("Your vision fades. You have fallen.");
-                    break;
-                }
-
-                Console.WriteLine();
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey(true);
-            }
+            // Phase 3
+            StoryPhase3();
+            BossBattle();
 
             Console.Clear();
+            Console.WriteLine("Congratulations! You completed the dungeon!");
             Console.WriteLine($"Final Score: {score}");
-            Console.WriteLine("Thanks for playing.");
             Console.ReadKey();
         }
 
         void CreateCharacter()
         {
             Console.Clear();
-            Console.WriteLine("Welcome, adventurer.");
-            Console.Write("What is your name? ");
-
+            Console.WriteLine("Welcome, adventurer!");
+            Console.Write("Enter your name: ");
             string? input = Console.ReadLine();
-            player.Name = string.IsNullOrWhiteSpace(input)
-                ? "Nameless Hero"
-                : input.Trim();
-
-            Console.WriteLine();
+            player.Name = string.IsNullOrWhiteSpace(input) ? "Nameless Hero" : input.Trim();
             Console.WriteLine($"Very well, {player.Name}. Your journey begins...");
             Console.ReadKey(true);
         }
 
-        void DrawUI(Enemy enemy)
+        Enemy GetRandomEnemy(int difficulty)
         {
-            Console.WriteLine("+---------------------------+");
-            Console.WriteLine("|       TINY DUNGEON        |");
-            Console.WriteLine("+---------------------------+");
-            Console.WriteLine($"{player.Name}");
-            Console.WriteLine($"HP: {player.Health}/{player.MaxHealth}  Level: {player.Level}  XP: {player.XP}");
-            Console.WriteLine($"Score: {score}");
-            Console.WriteLine();
-            Console.WriteLine($"A {enemy.Name} blocks your path.");
-            Console.WriteLine();
+            if (difficulty == 1)
+            {
+                return new Enemy("Goblin", 4, 1, 6, 0.6);
+            }
+            else
+            {
+                return new Enemy("Orc", 6, 2, 6, 0.5);
+            }
+        }
+
+        void BattlePhase(Enemy enemy)
+        {
+            Console.Clear();
+            Console.WriteLine($"A {enemy.Name} appears!");
+            Console.ReadKey(true);
+
+            while (enemy.Health > 0 && player.Health > 0)
+            {
+                Console.Clear();
+                Console.WriteLine($"{player.Name}: {player.Health}/{player.MaxHealth} HP");
+                Console.WriteLine($"{enemy.Name}: {enemy.Health}/{enemy.MaxHealth} HP");
+                Console.WriteLine("Choose your action: [A] Attack  [H] Heal  [R] Run");
+
+                ConsoleKey key = Console.ReadKey(true).Key;
+
+                if (key == ConsoleKey.A)
+                    PlayerAttack(enemy);
+                else if (key == ConsoleKey.H && healTimer == 0)
+                {
+                    player.Heal(20);
+                    healTimer = healCooldown;
+                    Console.WriteLine("You healed 20 HP!");
+                    Console.ReadKey(true);
+                }
+                else if (key == ConsoleKey.R)
+                {
+                    Console.WriteLine("You flee!");
+                    Console.ReadKey(true);
+                    break;
+                }
+
+                if (enemy.Health > 0)
+                    EnemyTurn(enemy);
+
+                if (healTimer > 0)
+                    healTimer--;
+
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey(true);
+            }
+
+            if (enemy.Health <= 0)
+            {
+                Console.WriteLine($"You defeated the {enemy.Name}!");
+                score += 10;
+                Console.ReadKey(true);
+            }
+        }
+
+        void BossBattle()
+        {
+            Enemy boss = new Enemy("Dragon", 8, 4, 8, 0.7);
+            Console.Clear();
+            AsciiArt.ShowBoss();
+            Console.ReadKey(true);
+            BattlePhase(boss);
         }
 
         void PlayerAttack(Enemy enemy)
         {
             int roll = Dice.D(20) + player.AttackModifier;
-            Console.WriteLine($"You attack! (Roll: {roll})");
-
-            if (roll >= 10) // simple AC for now
+            if (roll >= 10)
             {
                 int dmg = Dice.Roll(1, 8) + player.AttackModifier;
-                Console.WriteLine($"You strike the {enemy.Name} for {dmg} damage!");
+                enemy.Health -= dmg;
+                Console.WriteLine($"You hit the {enemy.Name} for {dmg} damage!");
             }
             else
-            {
-                Console.WriteLine("Your attack misses.");
-            }
+                Console.WriteLine("Your attack misses!");
+            Console.ReadKey(true);
         }
 
         void EnemyTurn(Enemy enemy)
         {
             if (rng.NextDouble() > enemy.AttackChance)
             {
-                Console.WriteLine($"The {enemy.Name} hesitates.");
+                Console.WriteLine($"{enemy.Name} hesitates.");
                 return;
             }
 
             int roll = Dice.D(20) + enemy.AttackBonus;
-
             if (roll >= player.Defense)
             {
-                int dmg = Dice.Roll(enemy.DamageDiceCount, enemy.DamageDiceSides);
-                player.Health -= dmg;
-                Console.WriteLine($"The {enemy.Name} hits you for {dmg} damage!");
+                int dmg = enemy.RollDamage();
+                player.TakeDamage(dmg);
+                Console.WriteLine($"{enemy.Name} hits you for {dmg} damage!");
             }
             else
+                Console.WriteLine($"{enemy.Name} misses!");
+            Console.ReadKey(true);
+        }
+
+        void StoryPhase1()
+        {
+            Console.Clear();
+            AsciiArt.ShowDungeonEntrance();
+            Console.WriteLine("You enter the dungeon and see three paths: Left, Right, Straight.");
+            Console.WriteLine("[L] Left  [R] Right  [S] Straight");
+
+            ConsoleKey key = Console.ReadKey(true).Key;
+            Console.WriteLine(key switch
             {
-                Console.WriteLine($"The {enemy.Name} attacks but misses!");
+                ConsoleKey.L => "You chose Left.",
+                ConsoleKey.R => "You chose Right.",
+                _ => "You go Straight."
+            });
+
+            Console.WriteLine("[H] Heal  [Enter] Continue");
+            key = Console.ReadKey(true).Key;
+            if (key == ConsoleKey.H && healTimer == 0)
+            {
+                player.Heal(20);
+                healTimer = healCooldown;
+                Console.WriteLine("You healed 20 HP.");
             }
+
+            Console.ReadKey(true);
+        }
+
+        void StoryPhase2()
+        {
+            Console.Clear();
+            Console.WriteLine("You find a treasure chest containing a potion. +20 HP");
+            AsciiArt.ShowTreasureChest();
+            player.Heal(20);
+            Console.ReadKey(true);
+        }
+
+        void StoryPhase3()
+        {
+            Console.Clear();
+            Console.WriteLine("You hear a roar... The final boss awaits!");
+            Console.WriteLine("[H] Heal  [Enter] Continue");
+
+            ConsoleKey key = Console.ReadKey(true).Key;
+            if (key == ConsoleKey.H && healTimer == 0)
+            {
+                player.Heal(20);
+                healTimer = healCooldown;
+                Console.WriteLine("You healed 20 HP.");
+            }
+
+            Console.ReadKey(true);
         }
     }
 }
