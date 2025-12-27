@@ -5,21 +5,29 @@ namespace TinyDungeon
     class Enemy
     {
         public string Name;
-        public int MinDamage;
-        public int MaxDamage;
-        public double AttackChance;
 
-        public Enemy(string name, int minDamage, int maxDamage, double attackChance)
+        public double AttackChance;
+        public int AttackBonus;
+        public int DamageDiceCount;
+        public int DamageDiceSides;
+
+        public Enemy(
+            string name,
+            int attackBonus,
+            int damageDiceCount,
+            int damageDiceSides,
+            double attackChance)
         {
             Name = name;
-            MinDamage = minDamage;
-            MaxDamage = maxDamage;
+            AttackBonus = attackBonus;
+            DamageDiceCount = damageDiceCount;
+            DamageDiceSides = damageDiceSides;
             AttackChance = attackChance;
         }
 
-        public int Attack(Random rng)
+        public int RollDamage()
         {
-            return rng.Next(MinDamage, MaxDamage + 1);
+            return Dice.Roll(DamageDiceCount, DamageDiceSides);
         }
     }
 }
