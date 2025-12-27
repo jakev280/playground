@@ -7,108 +7,141 @@ namespace TinyDungeon
     {
         Player player = new Player();
         Random rng = new Random();
+
         int score = 0;
         int healCooldown = 5;
         int healTimer = 0;
 
-        Enemy[] enemies = {
-            new Enemy("Goblin", 5, 10, 0.2),
-            new Enemy("Orc", 10, 20, 0.1),
-            new Enemy("Trap", 15, 25, 0.05)
+        Enemy[] enemies =
+        {
+            new Enemy("Goblin", 4, 1, 6, 0.6),
+            new Enemy("Orc", 6, 2, 6, 0.4),
+            new Enemy("Skeleton", 5, 1, 8, 0.5)
         };
 
         public void Run()
         {
+            CreateCharacter();
+
             bool running = true;
             while (running)
             {
                 Console.Clear();
-                        // Pick a random enemy for this frame
                 Enemy current = enemies[rng.Next(enemies.Length)];
 
-                // Display UI
-                Console.WriteLine("+----------------+");
-                Console.WriteLine("|  TINY DUNGEON  |");
-                Console.WriteLine("+----------------+");
-                Console.WriteLine($"Health: {player.Health}/{player.MaxHealth}  Level: {player.Level}  XP: {player.XP}");
-                Console.WriteLine($"Score: {score}");
-                Console.WriteLine();
-                Console.WriteLine("Press D to take damage, H to heal, Q to quit");
-                Console.WriteLine("Enemies ahead:");
-                Console.WriteLine($"{current.Name}");
-                Console.WriteLine();
+                DrawUI(current);
 
-                // Enemy attacks
-                if (rng.NextDouble() < current.AttackChance)
+                Console.WriteLine("Choose your action:");
+                Console.WriteLine("[A] Attack   [H] Heal   [Q] Quit");
+
+                ConsoleKey key = Console.ReadKey(true).Key;
+
+                if (key == ConsoleKey.Q)
+                    break;
+
+                if (key == ConsoleKey.H && healTimer == 0)
                 {
-                    int dmg = current.Attack(rng);
-                    player.Health -= dmg;
-                    if (player.Health < 0) player.Health = 0;
-                    Console.WriteLine($"{current.Name} hits you for {dmg} HP!");
+                    int heal = 20;
+                    player.Health = Math.Min(player.Health + heal, player.MaxHealth);
+                    healTimer = healCooldown;
+                    Console.WriteLine($"You regain {heal} HP.");
                 }
 
-                // Random events
-                if (rng.NextDouble() < 0.05) // 5% chance for treasure
+                if (key == ConsoleKey.A)
                 {
-                    int heal = rng.Next(5, 16);
-                    player.Health += heal;
-                    if (player.Health > player.MaxHealth) player.Health = player.MaxHealth;
-                    Console.WriteLine($"You found a potion! +{heal} HP");
+                    PlayerAttack(current);
                 }
 
-                if (rng.NextDouble() < 0.03) // 3% chance trap
-                {
-                    int trap = rng.Next(5, 20);
-                    player.Health -= trap;
-                    if (player.Health < 0) player.Health = 0;
-                    Console.WriteLine($"A trap triggers! -{trap} HP");
-                }
+                EnemyTurn(current);
 
-                // Input handling
-                if (Console.KeyAvailable)
-                {
-                    ConsoleKey key = Console.ReadKey(true).Key;
+                if (healTimer > 0)
+                    healTimer--;
 
-                    if (key == ConsoleKey.D)
-                    {
-                        player.Health -= 10;
-                        if (player.Health < 0) player.Health = 0;
-                    }
-                    else if (key == ConsoleKey.H && healTimer == 0)
-                    {
-                        int healAmount = 20;
-                        player.Health += healAmount;
-                        if (player.Health > player.MaxHealth) player.Health = player.MaxHealth;
-                        healTimer = healCooldown;
-                        Console.WriteLine($"You healed {healAmount} HP!");
-                    }
-                    else if (key == ConsoleKey.Q)
-                    {
-                        running = false;
-                        continue;
-                    }
-                }
-
-                // Update timers
-                if (healTimer > 0) healTimer--;
-
-                // Score and XP
                 score++;
                 player.GainXP(1);
 
-                // Check death
                 if (player.Health <= 0)
                 {
-                    Console.WriteLine("You died! Game Over.");
+                    Console.WriteLine("Your vision fades. You have fallen.");
                     break;
                 }
 
-                Thread.Sleep(500); // frame timing
+                Console.WriteLine();
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey(true);
             }
 
+            Console.Clear();
             Console.WriteLine($"Final Score: {score}");
             Console.WriteLine("Thanks for playing.");
             Console.ReadKey();
+        }
+
+        void CreateCharacter()
+        {
+            Console.Clear();
+            Console.WriteLine("Welcome, adventurer.");
+            Console.Write("What is your name? ");
+
+            string? input = Console.ReadLine();
+            player.Name = string.IsNullOrWhiteSpace(input)
+                ? "Nameless Hero"
+                : input.Trim();
+
+            Console.WriteLine();
+            Console.WriteLine($"Very well, {player.Name}. Your journey begins...");
+            Console.ReadKey(true);
+        }
+
+        void DrawUI(Enemy enemy)
+        {
+            Console.WriteLine("+---------------------------+");
+            Console.WriteLine("|       TINY DUNGEON        |");
+            Console.WriteLine("+---------------------------+");
+            Console.WriteLine($"{player.Name}");
+            Console.WriteLine($"HP: {player.Health}/{player.MaxHealth}  Level: {player.Level}  XP: {player.XP}");
+            Console.WriteLine($"Score: {score}");
+            Console.WriteLine();
+            Console.WriteLine($"A {enemy.Name} blocks your path.");
+            Console.WriteLine();
+        }
+
+        void PlayerAttack(Enemy enemy)
+        {
+            int roll = Dice.D(20) + player.AttackModifier;
+            Console.WriteLine($"You attack! (Roll: {roll})");
+
+            if (roll >= 10) // simple AC for now
+            {
+                int dmg = Dice.Roll(1, 8) + player.AttackModifier;
+                Console.WriteLine($"You strike the {enemy.Name} for {dmg} damage!");
+            }
+            else
+            {
+                Console.WriteLine("Your attack misses.");
+            }
+        }
+
+        void EnemyTurn(Enemy enemy)
+        {
+            if (rng.NextDouble() > enemy.AttackChance)
+            {
+                Console.WriteLine($"The {enemy.Name} hesitates.");
+                return;
+            }
+
+            int roll = Dice.D(20) + enemy.AttackBonus;
+
+            if (roll >= player.Defense)
+            {
+                int dmg = Dice.Roll(enemy.DamageDiceCount, enemy.DamageDiceSides);
+                player.Health -= dmg;
+                Console.WriteLine($"The {enemy.Name} hits you for {dmg} damage!");
+            }
+            else
+            {
+                Console.WriteLine($"The {enemy.Name} attacks but misses!");
+            }
         }
     }
 }
