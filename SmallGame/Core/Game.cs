@@ -1,6 +1,9 @@
 using System;
+using System.IO;
+using SmallGame.Core; 
+using SmallGame.Domain.Characters;
 
-namespace TinyDungeon
+namespace SmallGame.Core
 {
     class Game
     {
@@ -108,7 +111,10 @@ namespace TinyDungeon
         {
             Enemy boss = new Enemy("Dragon", 8, 4, 8, 0.7);
             Console.Clear();
-            AsciiArt.ShowBoss();
+            
+            // Replaced AsciiArt.ShowBoss() with your new dragon.txt
+            PrintArt("dragon.txt");
+            
             Console.ReadKey(true);
             BattlePhase(boss);
         }
@@ -150,7 +156,10 @@ namespace TinyDungeon
         void StoryPhase1()
         {
             Console.Clear();
-            AsciiArt.ShowDungeonEntrance();
+            
+            // Replaced AsciiArt.ShowDungeonEntrance() with your new title.txt
+            PrintArt("title.txt");
+            
             Console.WriteLine("You enter the dungeon and see three paths: Left, Right, Straight.");
             Console.WriteLine("[L] Left  [R] Right  [S] Straight");
 
@@ -178,7 +187,9 @@ namespace TinyDungeon
         {
             Console.Clear();
             Console.WriteLine("You find a treasure chest containing a potion. +20 HP");
-            AsciiArt.ShowTreasureChest();
+            
+            // Note: ShowTreasureChest() was deleted; no chest.txt exists in your list.
+            
             player.Heal(20);
             Console.ReadKey(true);
         }
@@ -198,6 +209,20 @@ namespace TinyDungeon
             }
 
             Console.ReadKey(true);
+        }
+
+        // Added this helper to handle reading from Assets/Ascii/
+        void PrintArt(string fileName)
+        {
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Ascii", fileName);
+            if (File.Exists(path))
+            {
+                Console.WriteLine(File.ReadAllText(path));
+            }
+            else
+            {
+                Console.WriteLine($"[Art file {fileName} not found]");
+            }
         }
     }
 }
