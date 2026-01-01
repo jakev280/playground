@@ -1,10 +1,15 @@
-﻿using TinyDungeon;
+﻿using System;
+using SmallGame.Core; // Points to the new Core folder
 
-class Program
+namespace SmallGame
 {
-    static void Main()
+    class Program
     {
-        Game game = new Game();
-        game.Run();
+        static void Main(string[] args)
+        {
+            // Now identifies Game inside the SmallGame.Core namespace
+            Game game = new Game();
+            game.Run();
+        }
     }
 }
